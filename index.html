@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced PoseNet Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+    <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: #e6e6e6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 10px 0 20px;
+            border-bottom: 1px solid #333;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 32px;
+            color: #66f5cc;
+            text-shadow: 0 0 10px rgba(102, 245, 204, 0.3);
+        }
+        
+        .content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        #sketch-container {
+            position: relative;
+            margin: 0 auto;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .controls {
+            width: 100%;
+            max-width: 640px;
+            margin: 20px auto;
+            padding: 15px;
+            background-color: #16213e;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+            flex: 1;
+            min-width: 200px;
+            padding: 0 10px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #66f5cc;
+        }
+        
+        button {
+            background-color: #0f3460;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #16213e;
+        }
+        
+        button.active {
+            background-color: #66f5cc;
+            color: #0f3460;
+        }
+        
+        .toggle-btn {
+            display: inline-flex;
+            margin-right: 10px;
+        }
+        
+        .slider-container {
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+        
+        .slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 5px;
+            border-radius: 5px;
+            background: #0f3460;
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #66f5cc;
+            cursor: pointer;
+        }
+        
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+            margin-left: 10px;
+        }
+        
+        .status {
+            width: 100%;
+            max-width: 640px;
+            padding: 10px;
+            margin-top: 15px;
+            background-color: rgba(22, 33, 62, 0.5);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .keyboard-shortcuts {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #aaa;
+        }
+        
+        @media (max-width: 660px) {
+            .control-group {
+                width: 100%;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Advanced PoseNet Motion Tracker</h1>
+        </header>
+        
+        <div class="content">
+            <div id="sketch-container"></div>
+            
+            <div class="controls">
+                <div class="control-row">
+                    <div class="control-group">
+                        <label>Display Options</label>
+                        <div>
+                            <button id="toggle-video" class="toggle-btn active">Video</button>
+                            <button id="toggle-skeleton" class="toggle-btn active">Skeleton</button>
+                            <button id="toggle-keypoints" class="toggle-btn active">Keypoints</button>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Tracking Options</label>
+                        <div>
+                            <button id="toggle-mirror" class="toggle-btn active">Mirror Video</button>
+                            <button id="reset-settings">Reset Settings</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-row">
+                    <div class="control-group">
+                        <label>Confidence Threshold: <span id="confidence-value">0.4</span></label>
+                        <div class="slider-container">
+                            <input type="range" min="0.1" max="0.9" step="0.05" value="0.4" class="slider" id="confidence-slider">
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Motion Smoothing: <span id="smoothing-value">0.5</span></label>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="1" step="0.1" value="0.5" class="slider" id="smoothing-slider">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status" id="status-bar">
+                Initializing PoseNet...
+            </div>
+            
+            <div class="keyboard-shortcuts">
+                <p>Keyboard Shortcuts: 'V' for video, 'K' for keypoints, 'S' for skeleton, 'F' for mirror</p>
+                <p>Use arrow keys: Up/Down to adjust confidence, Left/Right to adjust smoothing</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="sketch.js"></script>
+    <script>
+        // Connect UI controls to the sketch
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for p5js to initialize
+            setTimeout(() => {
+                const videoBtn = document.getElementById('toggle-video');
+                const skeletonBtn = document.getElementById('toggle-skeleton');
+                const keypointsBtn = document.getElementById('toggle-keypoints');
+                const mirrorBtn = document.getElementById('toggle-mirror');
+                const confidenceSlider = document.getElementById('confidence-slider');
+                const confidenceValue = document.getElementById('confidence-value');
+                const smoothingSlider = document.getElementById('smoothing-slider');
+                const smoothingValue = document.getElementById('smoothing-value');
+                const resetBtn = document.getElementById('reset-settings');
+                const statusBar = document.getElementById('status-bar');
+                
+                // Update status bar periodically
+                setInterval(() => {
+                    if (window.errorText) {
+                        statusBar.textContent = window.errorText;
+                        statusBar.style.color = '#ff6666';
+                    } else if (!window.isModelLoaded) {
+                        statusBar.textContent = 'Loading PoseNet model...';
+                        statusBar.style.color = '#ffcc66';
+                    } else {
+                        const detectedCount = window.poses ? window.poses.length : 0;
+                        const fps = Math.round(window.frameRate());
+                        statusBar.textContent = `Status: Running at ${fps} FPS, Detecting ${detectedCount} person(s)`;
+                        statusBar.style.color = '#66f5cc';
+                    }
+                }, 500);
+                
+                // Toggle buttons
+                videoBtn.addEventListener('click', () => {
+                    window.showVideo = !window.showVideo;
+                    videoBtn.classList.toggle('active');
+                });
+                
+                skeletonBtn.addEventListener('click', () => {
+                    window.showSkeleton = !window.showSkeleton;
+                    skeletonBtn.classList.toggle('active');
+                });
+                
+                keypointsBtn.addEventListener('click', () => {
+                    window.showKeypoints = !window.showKeypoints;
+                    keypointsBtn.classList.toggle('active');
+                });
+                
+                mirrorBtn.addEventListener('click', () => {
+                    window.flipVideo = !window.flipVideo;
+                    mirrorBtn.classList.toggle('active');
+                });
+                
+                // Sliders
+                confidenceSlider.addEventListener('input', (e) => {
+                    window.uiSettings.confidenceThreshold = parseFloat(e.target.value);
+                    confidenceValue.textContent = e.target.value;
+                });
+                
+                smoothingSlider.addEventListener('input', (e) => {
+                    window.smoothingFactor = parseFloat(e.target.value);
+                    smoothingValue.textContent = e.target.value;
+                });
+                
+                // Reset button
+                resetBtn.addEventListener('click', () => {
+                    window.showVideo = true;
+                    window.showSkeleton = true;
+                    window.showKeypoints = true;
+                    window.flipVideo = true;
+                    window.uiSettings.confidenceThreshold = 0.4;
+                    window.smoothingFactor = 0.5;
+                    
+                    // Update UI to match
+                    videoBtn.classList.add('active');
+                    skeletonBtn.classList.add('active');
+                    keypointsBtn.classList.add('active');
+                    mirrorBtn.classList.add('active');
+                    confidenceSlider.value = 0.4;
+                    confidenceValue.textContent = '0.4';
+                    smoothingSlider.value = 0.5;
+                    smoothingValue.textContent = '0.5';
+                });
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
